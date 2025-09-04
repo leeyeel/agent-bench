@@ -1,0 +1,10 @@
+目标：
+- 新建 output/004/temperature.py：c2f(c)->f，f2c(f)->c；保留两位小数
+- 新建 output/004/test_temperature.py，含典型/边界用例
+
+要求：
+- 四舍五入到 2 位小数，使用 round(x,2)
+
+验收：
+- pytest -q 通过
+

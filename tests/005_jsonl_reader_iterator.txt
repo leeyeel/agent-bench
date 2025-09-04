@@ -1,0 +1,12 @@
+目标：
+- 新建 output/005/jsonl.py：iter_jsonl(path) 逐行 yield 解析后的 dict
+- 新建 output/005/data.jsonl（3 行示例）
+- 新建 output/005/print_jsonl.py：打印每条的键数量
+
+要求：
+- 对无效 JSON 行要 try/except 跳过并计数
+
+验收：
+- python output/005/print_jsonl.py output/005/data.jsonl
+- 末行打印：invalid_lines=<数字>
+

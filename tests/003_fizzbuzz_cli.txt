@@ -1,0 +1,11 @@
+目标：
+- 新建 output/003/fizzbuzz.py，实现命令行：python output/003/fizzbuzz.py -n 16
+- 输出 1..n 的 FizzBuzz，每行一个值；支持 --fizz 和 --buzz 改写词语（默认 Fizz/Buzz）
+
+要求：
+- 用 argparse
+- 有 __main__ 入口
+
+验收：
+- python output/003/fizzbuzz.py -n 16 | tail -3  # 应含 14, FizzBuzz, 16
+

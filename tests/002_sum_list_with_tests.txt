@@ -1,0 +1,11 @@
+目标：
+- 新建 output/002/mathutils.py，提供 sum_list(nums: list[int]) -> int
+- 新建 output/002/test_sum_list.py，覆盖空列表、正数、负数、混合
+
+要求：
+- 使用 pytest 风格
+- sum_list 不使用内置 sum（自己实现循环）
+
+验收：
+- 运行：pytest -q
+- 所有用例通过
