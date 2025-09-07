@@ -68,8 +68,8 @@ def main():
 
     case_id = m.group(1)
     write_session_case(session_id, case_id)
-
-    return 2
+    print("⚠️ 只记录CASE_ID,不进入上下文.", file=sys.stderr)
+    sys.exit(2)
 
 if __name__ == "__main__":
     main()

@@ -48,9 +48,7 @@ for f in "${tests[@]}"; do
   echo -e "Prompt: $prompt\n"
 
   run_claude() {
-    CLAUDE_CODE_ENABLE_TELEMETRY=0 \
-    "$CLAUDE_CMD" -p "$prompt" \
-      --dangerously-skip-permissions
+    "$CLAUDE_CMD" -p "$prompt" --dangerously-skip-permissions
   }
 
   run_pywen() {
@@ -59,7 +57,7 @@ for f in "${tests[@]}"; do
 
   case "$SHOW" in
     claude)
-      title ">>> Claude Code (visible)"; #run_claude
+      title ">>> Claude Code (visible)"; run_claude
       title ">>> Pywen (silent)";        run_pywen >/dev/null 2>&1 || true
       ;;
     pywen)
