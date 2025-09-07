@@ -7,7 +7,8 @@ set -euo pipefail
 
 SESSION="${SESSION:-PYWEN_CLAUDE_SBS}"
 TEST_DIR="tests"
-CLAUDE_CMD="${CLAUDE_CMD:-claude --dangerously-skip-permissions}"
+DELAY=5
+CLAUDE_CMD="${CLAUDE_CMD:-claude}"
 PYWEN_CMD="${PYWEN_CMD:-pywen}"
 
 FIFO_DIR="${FIFO_DIR:-/tmp/agent-done}"
@@ -17,6 +18,9 @@ PYWEN_FIFO="$FIFO_DIR/pywen.done"
 mkdir -p "$FIFO_DIR"
 [[ -p "$CLAUDE_FIFO" ]] || mkfifo "$CLAUDE_FIFO"
 [[ -p "$PYWEN_FIFO"  ]] || mkfifo "$PYWEN_FIFO"
+
+exec {CLAUDE_RD}<>"$CLAUDE_FIFO"
+exec {PYWEN_RD}<>"$PYWEN_FIFO"
 
 usage() {
   cat <<EOF
@@ -41,58 +45,134 @@ done
 
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" \
-    "CLAUDE_CODE_ENABLE_TELEMETRY=0 $CLAUDE_CMD"
+    "$CLAUDE_CMD --dangerously-skip-permissions"
 
   tmux split-window -h -t "$SESSION" \
-    "PYWEN_AUTO_CONFIRM=1 $PYWEN_CMD"
+    "$PYWEN_CMD"
 
   tmux select-layout -t "$SESSION" even-horizontal
   tmux set-option -t "$SESSION" mouse on
   tmux set-option -t "$SESSION" pane-border-status top
   tmux set-option -t "$SESSION" pane-border-format " #[bold]#P » #{pane_current_command}"
   tmux set-option -t "$SESSION" status-position top
-
-  tmux setw -t "$SESSION" synchronize-panes on
-  tmux bind-key S setw synchronize-panes
 fi
 
-tmux select-pane -t "$SESSION:.+0"
+get_pane_id_by_cmd() {
+  local pat="$1"
+  tmux list-panes -t "$SESSION" -F '#{pane_id} #{pane_current_command}' \
+    | awk -v pat="$pat" '$2 ~ pat {print $1; exit}'
+}
 
-shopt -s nullglob
-tests=("$TEST_DIR"/*.txt)
-if (( ${#tests[@]} == 0 )); then
-  echo "No *.txt found in $TEST_DIR"
-  exec tmux attach -t "$SESSION"
-fi
+CLAUDE_PANE="$(get_pane_id_by_cmd '^claude')"
+PYWEN_PANE="$(get_pane_id_by_cmd '^pywen')"
 
-echo "会话：$SESSION"
-echo "用例目录：$TEST_DIR"
-echo "—— 将依次发送每个用例，并等待双方 DONE 信号 ——"
-sleep 1
+CLAUDE_PANE="${CLAUDE_PANE:-$(tmux list-panes -t "$SESSION" -F '#{pane_id}' | sed -n '1p')}"
+PYWEN_PANE="${PYWEN_PANE:-$(tmux list-panes -t "$SESSION" -F '#{pane_id}' | sed -n '2p')}"
 
-wait_one_done() {
-  local fifo="$1"; local case_id="$2"
-  while IFS= read -r line < "$fifo"; do
-    [[ "$line" == "$case_id DONE" ]] && return 0
+ready_pane() {
+  local pane="$1"
+  tmux if -t "$pane" -F '#{pane_in_mode}' 'send-keys -t "#{pane_id}" -X cancel' ''
+  sleep "${READY_DELAY:-0.03}"
+}
+
+feed_line_to_pane() {
+  local pane="$1"; local line="$2"
+  ready_pane "$pane"
+  tmux send-keys -t "$pane" -l -- "$line"
+  sleep "${ENTER_DELAY:-0.06}"
+  tmux send-keys -t "$pane" C-m
+  sleep "${ENTER_DELAY2:-0.02}"
+  tmux send-keys -t "$pane" C-m
+}
+
+feed_file_to_pane() {
+  local pane="$1"; local file="$2"
+  ready_pane "$pane"
+
+  if [[ -n "${PASTE_BRACKETED:-1}" && "${PASTE_BRACKETED:-1}" != "0" ]]; then
+    { cat "$file"; printf '\n'; } | tmux load-buffer -t "$SESSION" -
+    tmux paste-buffer -t "$pane" -p
+  else
+    { cat "$file"; printf '\n'; } | tmux load-buffer -t "$SESSION" -
+    tmux paste-buffer -t "$pane"
+  fi
+
+  sleep "${ENTER_DELAY:-0.06}"
+  tmux send-keys -t "$pane" C-m
+  sleep "${ENTER_DELAY2:-0.02}"
+  tmux send-keys -t "$pane" C-m
+}
+
+
+normalize_line() {
+  printf "%s" "$1" | tr -d '\r' | awk '{$1=$1;print}'
+}
+
+read_try_line() {
+  local fd="$1" out
+  if IFS= read -r -t 0.1 -u "$fd" out; then
+    printf "%s" "$out"
+    return 0
+  else
+    return 1
+  fi
+}
+
+wait_both_done() {
+  local case_id="$1"
+  local need_claude=1 need_pywen=1
+  local line norm
+
+  while (( need_claude==1 || need_pywen==1 )); do
+    if (( need_claude==1 )); then
+      if line="$(read_try_line "$CLAUDE_RD")"; then
+        norm="$(normalize_line "$line")"
+        if [[ "$norm" == "$case_id DONE" ]]; then
+          need_claude=0
+        fi
+      fi
+    fi
+
+    if (( need_pywen==1 )); then
+      if line="$(read_try_line "$PYWEN_RD")"; then
+        norm="$(normalize_line "$line")"
+        if [[ "$norm" == "$case_id DONE" ]]; then
+          need_pywen=0
+        fi
+      fi
+    fi
   done
 }
 
+shopt -s nullglob
+tests=( "$TEST_DIR"/*.txt )
+(( ${#tests[@]} > 0 )) || { echo "No *.txt in $TEST_DIR"; exec tmux attach -t "$SESSION"; }
+
+echo "会话：$SESSION"
+echo "Claude pane: $CLAUDE_PANE"
+echo "Pywen  pane: $PYWEN_PANE"
+echo "开始投喂 tests/*.txt（定向到两个 pane）..."
+sleep 1
+
 for f in "${tests[@]}"; do
   case_id="$(basename "$f")"
-
   printf "\n[CASE] %s\n" "$case_id"
 
-  tmux send-keys -t "$SESSION" "CASE_ID=$case_id" Enter
+  feed_line_to_pane "$CLAUDE_PANE" "CASE_ID=$case_id"
+  feed_line_to_pane "$PYWEN_PANE"  "CASE_ID=$case_id"
 
-  tmux load-buffer -t "$SESSION" - < "$f"
-  tmux paste-buffer -t "$SESSION"
-  tmux send-keys -t "$SESSION" Enter
+  feed_file_to_pane "$CLAUDE_PANE" "$f"
+  feed_file_to_pane "$PYWEN_PANE"  "$f"
 
-  wait_one_done "$CLAUDE_FIFO" "$case_id"
-  wait_one_done "$PYWEN_FIFO"  "$case_id"
+  wait_both_done "$case_id"
 
   echo "[DONE] $case_id"
 done
 
 echo -e "\n全部用例完成，进入会话（Ctrl-b S 切同步输入，Ctrl-b ←/→ 切 pane）..."
-exec tmux attach -t "$SESSION"
+tmux setw -t "$SESSION" synchronize-panes on
+tmux bind-key S setw synchronize-panes
+feed_line_to_pane "$CLAUDE_PANE" "/quit"
+feed_line_to_pane "$PYWEN_PANE"  "/quit"
+sleep 1
+tmux kill-session -t "$SESSION" 2>/dev/null || true

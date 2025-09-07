@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Claude Code Stop/SubagentStop hook:
-- 读取 stdin JSON（包含 transcript_path 等）
-- 扫描 transcript JSONL，找到最近一次用户输入中的 "CASE_ID=<id>"
 - 将 "<id> DONE\n" 写入 FIFO: /tmp/agent-done/claude.done
 """
 
