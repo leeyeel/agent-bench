@@ -1,11 +1,16 @@
 目标：
-- 新建 output/002/mathutils.py，提供 sum_list(nums: list[int]) -> int
-- 新建 output/002/test_sum_list.py，覆盖空列表、正数、负数、混合
+- 在 002/ 内实现 pkg/mathutils.py，函数 sum_list(nums:list[int])->int
+- 在 002/ 内编写 tests/test_sum_list.py，覆盖空列表/正数/负数/混合
 
 要求：
-- 使用 pytest 风格
-- sum_list 不使用内置 sum（自己实现循环）
+- sum_list 不使用内置 sum（自己循环）
+
+产物（放在 002/）：
+- pkg/mathutils.py
+- tests/test_sum_list.py
+- pyproject.toml 或 pytest.ini（二选一，可省）
 
 验收：
-- 运行：pytest -q
+- 在仓库根目录执行：pytest -q 002/tests/test_sum_list.py
 - 所有用例通过
+
