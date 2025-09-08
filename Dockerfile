@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y --no-install-recommends \
-    locales ca-certificates tzdata curl git vim\
+    locales ca-certificates tzdata curl git vim python3 python3-pip\
     && sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g' /etc/locale.gen \
     && locale-gen \
     && rm -rf /var/lib/apt/lists/*
@@ -26,19 +26,22 @@ RUN useradd -m -s /bin/bash ${USERNAME} \
     && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
 
 RUN mkdir -p /workspace && chown -R ${USERNAME}:${USERNAME} /workspace
-
-RUN npx playwright install chrome
-
 ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+
+#claude code
+RUN npm install -g @anthropic-ai/claude-code@1.0.81
+COPY claude/cli.js /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js
+RUN chmod 755 /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js
+
 USER ${USERNAME}
-
 WORKDIR /workspace
-COPY --chown=${USERNAME}:${USERNAME} . .
-RUN rm -rf .venv \
- && uv venv .venv \
- && uv sync --all-extras
 
-ENV PATH="/workspace/.venv/bin:${PATH}"
+#pywen
+RUN git clone https://github.com/leeyeel/Pywen.git \
+    && cd Pywen \
+    && git checkout multi-agent\
+    && uv venv \ 
+    && uv sync --all-extras \
+    && uv pip install -e .
 
-CMD ["pywen"]
-
+ENV PATH="/workspace/Pywen/.venv/bin:${PATH}"
