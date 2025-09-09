@@ -31,17 +31,24 @@ ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
 #claude code
 RUN npm install -g @anthropic-ai/claude-code@1.0.81
 COPY claude/cli.js /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js
+COPY claude/claude.json /home/${USERNAME}/.claude.json
 RUN chmod 755 /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js
 
 USER ${USERNAME}
 WORKDIR /workspace
+COPY --chown=${USERNAME}:${USERNAME} . /workspace/agent-bench/
+RUN chmod +x /workspace/agent-bench/*.sh
 
 #pywen
-RUN git clone https://github.com/leeyeel/Pywen.git \
-    && cd Pywen \
+RUN git clone https://github.com/leeyeel/Pywen.git
+RUN cd Pywen \
     && git checkout multi-agent\
     && uv venv \ 
     && uv sync --all-extras \
     && uv pip install -e .
+
+# Create directories for tests and output
+RUN mkdir -p /workspace/tests /workspace/output \
+    && chown -R ${USERNAME}:${USERNAME} /workspace/tests /workspace/output
 
 ENV PATH="/workspace/Pywen/.venv/bin:${PATH}"

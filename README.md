@@ -26,7 +26,31 @@
 
 ---
 
-## 安装依赖
+## 运行方式
+
+### 1. Docker 运行（推荐）
+
+首先创建环境变量文件 `.env`：
+
+```bash
+# 复制环境变量模板
+cp .env.example .env
+# 根据需要修改 .env 文件中的配置
+```
+
+#### 非交互模式（后台运行）：
+```bash
+docker-compose up agent-bench
+```
+
+#### 交互模式（需要用户交互）：
+```bash
+docker-compose --profile interactive up agent-bench-interactive
+```
+
+### 2. 本地运行
+
+#### 安装依赖
 
 * Python ≥ 3.10
 * tmux
@@ -36,7 +60,7 @@
 
 ---
 
-## 交互模式使用
+## 本地交互模式使用
 
 ### 1. 配置 Claude Code Hooks
 
@@ -110,7 +134,7 @@ tmux 热键：
 
 ---
 
-## 非交互模式使用
+## 本地非交互模式使用
 
 非交互模式下，Claude Code 与 Pywen 都直接作为命令行工具运行，**进程退出即视为一轮测试结束**。
 这种方式更适合快速跑通用脚本，不依赖 Hooks。
