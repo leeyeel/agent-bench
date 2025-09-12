@@ -1,6 +1,7 @@
 # 共享配置模板
 x-agent-bench-common: &agent-bench-common
   build: .
+  user: "${HOST_UID}:${HOST_GID}"
   environment:
     - TZ=Asia/Shanghai
     - PYTHONPATH=/workspace/Pywen
@@ -13,8 +14,8 @@ x-agent-bench-common: &agent-bench-common
     - PYWEN_TRAJECTORY_DIR=${PYWEN_TRAJECTORY_DIR:-}
     - CLAUDE_CODE_THEME=dark
   volumes:
-    - ./tests:/workspace/tests
-    - ./output:/workspace/output
+    - ./tests:/workspace/agent-bench/tests
+    - ./output:/workspace/agent-bench/output
     - agent-bench-data:/workspace/data
   working_dir: /workspace/agent-bench
 

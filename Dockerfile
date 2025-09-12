@@ -47,8 +47,4 @@ RUN cd Pywen \
     && uv sync --all-extras \
     && uv pip install -e .
 
-# Create directories for tests and output
-RUN mkdir -p /workspace/tests /workspace/output \
-    && chown -R ${USERNAME}:${USERNAME} /workspace/tests /workspace/output
-
 ENV PATH="/workspace/Pywen/.venv/bin:${PATH}"
