@@ -1,7 +1,6 @@
 # 共享配置模板
 x-agent-bench-common: &agent-bench-common
   image: ${IMAGE_NAME:-agent-bench:local}
-  user: "appuser:appuser"
   environment:
     - TZ=Asia/Shanghai
     - PYTHONPATH=/workspace/Pywen
@@ -22,17 +21,17 @@ x-agent-bench-common: &agent-bench-common
   stdin_open: true
 
 services:
-  agent-bench-image:
+  bench-image:
     build: .
     image: ${IMAGE_NAME:-agent-bench:local}
     command: ["bash", "-lc", "echo Built ${IMAGE_NAME:-agent-bench:local}"]
 
-  agent-bench-headless:
+  bench-headless:
     <<: *agent-bench-common
-    container_name: agent-bench-headless
+    container_name: bench-headless
     ports:
       - "${HOST_PORT:-8000}:8000"
-    command: bash -lc "./run_headless.sh"
+        #command: bash -lc "./run_headless.sh"
     restart: unless-stopped
 
     healthcheck:
@@ -42,11 +41,10 @@ services:
       retries: 3
       start_period: 40s
 
-  agent-bench-interactive:
+  bench-interactive:
     <<: *agent-bench-common
-    container_name: agent-bench-interactive
-      #command: bash -lc "./run_interactive_tmux.sh"
-    command: ["/bin/bash"]
+    container_name: bench-interactive
+    command: bash -lc "./run_interactive_tmux.sh"
     restart: unless-stopped
 
 volumes:
